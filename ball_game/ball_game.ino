@@ -1,6 +1,7 @@
 /*
  * 可以透過超音波距離感測器、紅外線反射感測器,觸發馬達轉動.
  * 並透過觸碰感測器(按鈕)來停止馬達轉動.
+ * 2020/05/28 修正超音波時間問題
  */
 
 //匯入軟體序列埠函式庫並指定腳位與存取變數
@@ -20,6 +21,7 @@ int ul = 100, Text, app_button = 0, motor1_speed = 200, motor2_speed = 200;
 
 unsigned long last_time;
 bool sonar_switch = true;
+int distance_cm = 0;
 
 // 超音波HC-SR04距離讀取程式(單位:公分)
 int sonar() {
@@ -33,13 +35,18 @@ int sonar() {
     pinMode(echo, INPUT);
     last_time = millis();
     long duration = pulseIn(echo, HIGH);
-    if ((millis() - last_time) > 100)sonar_switch=false;
-    int distance_cm = constrain((duration/2) / 29.1, 0, 100); 
-    delay(250);
+    if ((millis() - last_time) > 200) {
+      sonar_switch=false;
+      distance_cm = 0;
+    }
+    else {
+      distance_cm = constrain(int((duration/2) / 29.1), 0, 100);
+    }
+    delay(30);
     return distance_cm;
   }
   else {
-    int distance_cm = 0;
+    distance_cm = 0;
     return distance_cm;
   }
 }
@@ -85,7 +92,7 @@ void motor(int number, int Speed) {
     }
   }
   else {
-    Serial.println("Out of range.");
+    //Serial.println("Out of range.");
   }
 }
 
@@ -93,25 +100,23 @@ void bluetooth() {
   if (mySerial.available()) {
     Text = mySerial.read();
     if (Text == 65) {
-      Serial.print("A:");
+      //Serial.print("A:");
       //delay(50);
       Text = mySerial.read();
-      Serial.print(Text);
+      //Serial.print(Text);
       motor1_speed = int(Text);
     }
     else if (Text == 66) {
-      Serial.print("B:");
+      //Serial.print("B:");
       //delay(50);
       Text = mySerial.read();
-      Serial.print(Text);
+      //Serial.print(Text);
       motor2_speed = int(Text);
     }
     else if (Text == 72) {
-      byte HC = sonar();
-      bool IR = ir();
       mySerial.write(72);
-      mySerial.write(HC);
-      mySerial.write(IR);
+      mySerial.write(ul);
+      mySerial.write(ir());
     }
     else if (Text == 83){
       app_button = 1;
@@ -119,13 +124,13 @@ void bluetooth() {
     else if (Text == 90) {
       app_button = 0;
     }
-    Serial.println("");
+    //Serial.println("");
   }
 }
 
 // 啟動時設定與執行(只在開機時執行一次的程式)
 void setup() {
-  Serial.begin (9600);
+  //Serial.begin (9600);
   mySerial.begin(9600);
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT_PULLUP);
@@ -142,25 +147,25 @@ void loop() {
   while ((ul > 10 || ul == 1 || ul == 0) && ir() == 0 && app_button == 0) {
     ul = sonar();
     bluetooth();
-    Serial.print("Distance: " + String(ul) + "cm");  
-    Serial.print(" / IR: " + String(ir()));
-    Serial.println();
+    //Serial.print("Distance: " + String(ul) + "cm");  
+    //Serial.print(" / IR: " + String(ir()));
+    //Serial.println();
   }
-  Serial.println("Start!");
+  //Serial.println("Start!");
   app_button = 1;
   while (sw() == 0 && app_button == 1) {
     ul = sonar();
     bluetooth();
     motor(1, motor1_speed);
     motor(2, motor2_speed);
-    Serial.println("Wait button...");
-    Serial.print("Distance: " + String(ul) + "cm");  
-    Serial.println(" / IR: " + String(ir()));
-    Serial.print("M1: " + String(motor1_speed));
-    Serial.print(" / M2: " + String(motor2_speed));
-    Serial.println();
+    //Serial.println("Wait button...");
+    //Serial.print("Distance: " + String(ul) + "cm");  
+    //Serial.println(" / IR: " + String(ir()));
+    //Serial.print("M1: " + String(motor1_speed));
+    //Serial.print(" / M2: " + String(motor2_speed));
+    //Serial.println();
   }
-  Serial.println("End!");
+  //Serial.println("End!");
   app_button = 0;
   motor(1, 0);
   motor(2, 0);
